@@ -1,59 +1,192 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TugasWeb-P11-EcommerceAuth
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Tugas Rutin 11 - E-Commerce DB + Secure Auth. Toko online sederhana **TokoKita** dengan database e-commerce (7 tabel), login pakai Breeze, 3 role (admin / editor / user), custom middleware, dan PostPolicy.
 
-## About Laravel
+- Laravel 12 + Breeze (Blade)
+- PHP 8.2 + MySQL (XAMPP)
+- Filament 3 (panel admin)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Akun Testing
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Password semua akun: **`password`**
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Role | Email |
+|---|---|
+| Admin | `admin@tokokita.test` |
+| Editor | `editor@tokokita.test` |
+| Editor | `editor2@tokokita.test` |
+| User | `user@tokokita.test` |
 
-## Learning Laravel
+## Screenshot
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+| Halaman Toko | Detail Produk |
+|---|---|
+| ![Toko](screenshots/01-toko.png) | ![Produk](screenshots/02-produk.png) |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Artikel | Demo Eager Loading |
+|---|---|
+| ![Artikel](screenshots/03-artikel.png) | ![Eager](screenshots/04-eager-loading.png) |
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Bagian A - Database & Eloquent
 
-### Premium Partners
+### 1. Migrations 7 tabel + FK
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Tabel | Foreign Key |
+|---|---|
+| `categories` | - |
+| `products` | `category_id` → categories (restrict on delete) |
+| `addresses` | `user_id` → users (cascade) |
+| `orders` | `user_id` → users (cascade), `address_id` → addresses (set null) |
+| `order_items` | `order_id` → orders (cascade), `product_id` → products (restrict) |
+| `reviews` | `user_id` → users (cascade), `product_id` → products (cascade) |
+| `posts` | `user_id` → users (cascade) |
 
-## Contributing
+Ditambah kolom `role` (enum `admin`, `editor`, `user`) di tabel `users`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```
+users ──< addresses
+  │  └──< orders >── addresses
+  │         └──< order_items >── products >── categories
+  ├──< reviews >── products
+  └──< posts
+```
 
-## Code of Conduct
+### 2. Seeders + Factories
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- **63 produk** di 8 kategori, nama & harga ditulis manual biar realistis (`CatalogSeeder`)
+- 19 user (1 admin, 2 editor, 16 user) + alamat
+- ±45 pesanan dengan 1-4 item per pesanan, total dihitung dari item
+- Ulasan dari pesanan yang statusnya `completed`
+- 6 artikel (1 draft)
 
-## Security Vulnerabilities
+Factory: `UserFactory` (state `admin()` & `editor()`), `CategoryFactory`, `ProductFactory`, `AddressFactory`, `OrderFactory`, `OrderItemFactory`, `ReviewFactory`, `PostFactory`.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 3. Model + Relationships + Scope
 
-## License
+| Model | Relasi |
+|---|---|
+| User | hasMany orders, addresses, reviews, posts |
+| Category | hasMany products |
+| Product | belongsTo category, hasMany reviews & orderItems, belongsToMany orders |
+| Order | belongsTo user & address, hasMany items, belongsToMany products |
+| OrderItem | belongsTo order & product |
+| Review | belongsTo user & product |
+| Post | belongsTo user |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Scope: `Product::active()`, `inStock()`, `priceBetween($min, $max)`, `search($keyword)`, `Order::status($status)`, `Post::published()`.
+
+### 4. Dokumentasi 5 Query Tinker
+
+Lihat [docs/TINKER.md](docs/TINKER.md).
+
+---
+
+## Bagian B - Auth & Security
+
+### 5. Breeze
+
+Login, register, logout, dan profile dari Laravel Breeze (Blade).
+
+### 6. Multi-role + Custom Middleware
+
+`app/Http/Middleware/RoleMiddleware.php`, didaftarkan dengan alias `role` di `bootstrap/app.php`.
+
+```php
+Route::middleware(['auth', 'role:admin,editor'])->group(...); // kelola artikel
+Route::middleware(['auth', 'role:admin'])->group(...);        // kelola user
+```
+
+Kolom `role` sengaja **tidak** dimasukkan ke `$fillable`, jadi orang tidak bisa daftar langsung jadi admin dengan menyisipkan `role=admin` di form register.
+
+### 7. PostPolicy
+
+`app/Policies/PostPolicy.php`
+
+| Aksi | Admin | Editor | User |
+|---|---|---|---|
+| Lihat artikel publish | ✔ | ✔ | ✔ |
+| Lihat draft | ✔ | hanya miliknya | ✘ |
+| Tulis artikel | ✔ | ✔ | ✘ |
+| Edit / hapus artikel sendiri | ✔ | ✔ | ✘ |
+| Edit / hapus artikel orang lain | ✔ | ✘ | ✘ |
+
+Dicek di controller pakai `Gate::authorize()` dan di view pakai `@can` / `@cannot`.
+
+### 8. Route Protection
+
+| Halaman | Tamu | User | Editor | Admin |
+|---|---|---|---|---|
+| `/`, `/produk/{slug}`, `/artikel` | ✔ | ✔ | ✔ | ✔ |
+| `/dashboard`, `/pesanan-saya` | → login | ✔ | ✔ | ✔ |
+| `/kelola/posts` | → login | 403 | ✔ | ✔ |
+| `/kelola/users` | → login | 403 | 403 | ✔ |
+| `/admin` (Filament) | → login | 403 | 403 | ✔ |
+
+Testing incognito 2 role:
+
+| Login sebagai User | Login sebagai Admin |
+|---|---|
+| ![User](screenshots/incognito-user.png) | ![Admin](screenshots/incognito-admin.png) |
+
+---
+
+## Bonus
+
+- **Filament admin panel** di `/admin` (khusus admin, lewat `canAccessPanel()` di model User). Ada resource Kategori, Produk, dan Pesanan.
+- **Demo eager loading** di `/eager-loading`: data yang sama diambil dua cara. Tanpa eager loading butuh **44 query**, dengan `with(['user', 'items.product'])` cuma **4 query**.
+
+---
+
+## Cara Install
+
+```bash
+git clone https://github.com/graceyla/TugasWeb-P11-EcommerceAuth.git
+cd TugasWeb-P11-EcommerceAuth
+
+composer install
+npm install
+npm run build
+
+copy .env.example .env
+php artisan key:generate
+```
+
+Buat database `db_tr11_ecommerce` di phpMyAdmin, lalu:
+
+```bash
+php artisan migrate --seed
+php artisan serve
+```
+
+Buka `http://127.0.0.1:8000`.
+
+> Filament butuh ekstensi PHP `intl`. Di XAMPP aktifkan dengan menghapus tanda `;` di baris `;extension=intl` pada `php.ini`.
+
+## Struktur Folder Penting
+
+```
+app/
+├── Filament/Resources/          -> Category, Product, Order (bonus)
+├── Http/
+│   ├── Controllers/
+│   │   ├── ShopController.php
+│   │   ├── PostController.php           -> artikel publik
+│   │   ├── OrderController.php          -> pesanan saya
+│   │   ├── DashboardController.php
+│   │   ├── EagerLoadingController.php   -> bonus
+│   │   └── Kelola/
+│   │       ├── PostController.php       -> CRUD artikel (admin, editor)
+│   │       └── UserController.php       -> ubah role (admin)
+│   ├── Middleware/RoleMiddleware.php
+│   └── Requests/PostRequest.php
+├── Models/                      -> User, Category, Product, Address, Order, OrderItem, Review, Post
+└── Policies/PostPolicy.php
+database/
+├── factories/
+├── migrations/
+└── seeders/                     -> UserSeeder, CatalogSeeder, OrderSeeder, PostSeeder
+docs/TINKER.md
+routes/web.php
+```
